@@ -44,6 +44,7 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+#define med_TIM TIM2
 #define trig_TIM TIM3
 char msg[]="\r\n Ejemplo con sensor HC SR-04 sin IC\n\r";
 uint32_t numTicks;
@@ -100,15 +101,15 @@ void trigger_TIM()
 //{
  /*	//---------CONFIGURACIÓN DE <BT> DEL TIMER 4---------------------------//
 
-		trig_TIM->ARR = 19; //el período de mi señal va a ser 20us
-		trig_TIM->PSC =83; //tengo una resolución Tu=1 microsegundo
-		trig_TIM->CNT =0; //la cuenta empieza en 0
+		med_TIM->ARR = 19; //el período de mi señal va a ser 20us
+		med_TIM->PSC =83; //tengo una resolución Tu=1 microsegundo
+		med_TIM->CNT =0; //la cuenta empieza en 0
 
 	//------------------CONFIGURACIÓN INTERNA DEL TIMER 4--------------------------------------//
 
-		trig_TIM->CR1 &=~(1<<0)|(1<<1)|(1<<2)|(1<<3)|(1<<4)|(11<<5)|(1<<7)|(11<<8); //RESETEAMOS LAS CONFIGURACIONES
-		trig_TIM->CR1 |=(1<<3)|(1<<2)|(1<<7);//activamos OPM "el contador se desactiva una vez que llega el evento UE"
-		trig_TIM->DIER &=~(1<<0);//RESET
+		med_TIM->CR1 &=~(1<<0)|(1<<1)|(1<<2)|(1<<3)|(1<<4)|(11<<5)|(1<<7)|(11<<8); //RESETEAMOS LAS CONFIGURACIONES
+		med_TIM->CR1 |=(1<<3)|(1<<2)|(1<<7);//activamos OPM "el contador se desactiva una vez que llega el evento UE"
+		med_TIM->DIER &=~(1<<0);//RESET
 		trig_TIM->DIER |=(1<<0);// Activar evento UE
 		trig_TIM->SMCR =0; //DESACTIVADO
 		trig_TIM->CR2=0; // DESACTIVADO
@@ -147,10 +148,14 @@ void EXTII_CNFIG()
 
 }
 void GPIO_CONF(void){
+//-------------CONFIGURACIÓN BOTÓN USUARIO PC13-------------------//
 
 GPIOC->MODER &= ~(11 << (13*2)); //entrada PA13 INPUT
 
+//----------------CONFIGURACIÓN PIN DE MEDICIÓN TIEMPO MODO TIC-------------------//
+
 GPIOA->MODER &= ~(11 << (9*2)); //entrada PA9
+
 //-----------CONF SEÑAL TRIGGER MODO TOC----------------------------//
 
 GPIOA->MODER &=~ (11 << (6*2)); //RESET PA6
