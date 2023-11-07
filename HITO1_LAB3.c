@@ -160,7 +160,7 @@ GPIOA->MODER &= ~(11 << (9*2)); //entrada PA9
 
 GPIOA->MODER &=~ (11 << (6*2)); //RESET PA6
 GPIOA->MODER |= (10 << (6*2)); //salida AFR PA6
-GPIOA->AFR[0] =0;//RESET
+GPIOA->AFR[0] &=~(1111<<6*4);//RESET DEL REGISTRO AF02 PA6
 GPIOA->AFR[0] |=(1<<(6*4+1));// configuramos columna AF02 del puerto A en pin 6 relacionado con TIM3
 
 //-------------LED DE ESTADO DE INTERRUPCIÓN------------------------//
