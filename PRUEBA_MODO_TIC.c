@@ -70,9 +70,10 @@ void TIMMER()
 	TIM2->CR1 = 0;
 	TIM2->CR2 = 0;
 	TIM2->SMCR = 0;
-	TIM2->CCMR1 = 0x0001; // CCyS = 1 (TIC); OCyM = 000 y OCyPE = 0 (TIC)
-	TIM2->CCMR1 |= (0b1100<<4); //no usamos preescaler pero se usa filtro
-	TIM2->CCER = 0x0003; // CCyNP:CCyP=01 (activo a f. caída) CCyE=1 (captura habilitada-TIC)
+	TIM2->CCMR1 =0; //Reset de TODAS las configuraciones
+	TIM2->CCMR1 |=(01<<8); //configuración <CANAL 2> como INPUT (TIC) vamos a MEDIR señal tiempo de "ECHO"
+	//TIM2->CCMR1 |= (1100<<12); //no usamos preescaler pero se usa filtro <CANAL 2>
+	TIM2->CCER |= (3<<4); // CCyNP:CCyP=01 (activo a f. caída) CCyE=1 (captura habilitada-TIC) <CANAL 2>
 	TIM2->PSC = 83; //Define el PSC. Tu=1us
 	TIM2->ARR = 9999999; //Por defecto se carga al mayor valor posible. Esto no es necesario
 
@@ -82,7 +83,7 @@ void TIMMER()
 	//TIM2->CR1 |= (1<<0 );//Todavía no arrancamos el timer. Lo hará el EXTI13.
 
 	//interrupciones. Va después de actualizar para evitar que salte la IRQ del TMR
-	TIM2->DIER |= ((1<<0)|(1<<1)); // Se genera INT al ocurrir un CCyIE=1 o UIF=1
+	TIM2->DIER |= ((1<<0)|(1<<2)); // Se genera INT al ocurrir un CCyIE=1 o UIF=1
 
 }
 void TIMER3_CONFIG()
@@ -95,7 +96,7 @@ void TIMER3_CONFIG()
 	TIM3->CCER = 0; // CCyNP:CCyP = 01 (activo a flanco de caída) CCyE=1 (captura habilitada para TIC)
 
 	//Definimos la BT
-	TIM3->PSC = 8399; //Define el PSC. Tu=1us
+	TIM3->PSC = 8399; //Define el PSC. Tu=0.1ms
 	TIM3->ARR = 2500;//Por defecto se carga al mayor valor posible. Esto no es necesario
 	//Listos Go
 	TIM3->EGR |= (1<<0); //Si lo hacemos genera un Update....NO HACERLO antes de tiempo! Aquí si
@@ -108,6 +109,7 @@ void TIMER3_CONFIG()
 }
 void clk_cnfig()
 {
+	__HAL_RCC_GPIOB_CLK_ENABLE(); //Habilitamos reloj puerto B
 	RCC->AHB1ENR |= ((1<<0)|(1<<2));// puerto A y puerto C
 	RCC->APB1ENR |= ((1<<0)|(1<<1)); // Reloj TIM2/TIM3
 }
@@ -124,12 +126,18 @@ void EXTII_CNFIG()
 }
 void GPIO_CONF(void){
 
-	GPIOA->MODER &= ~(11<<(0*2)); //PA0 como Entrada EXTI
+
 	GPIOA->MODER |= (01<<(5*2)); //PA5 como Salida
 	GPIOA->OTYPER &= ~(1<<5); //PA5 PusPull
-	//AF GPIO A PA2 y PA3
-	GPIOA->MODER |= ((1<<(0*2+1)) | (1<<(2*2+1)) | (1<<(3*2+1)));
-	//GPIOA->AFR[0]|=(1 << (0*4)); // AFR[0] PA0 --> AF1 (TIM2- TIC)
+
+	GPIOA->MODER |= ((1<<(2*2+1)) | (1<<(3*2+1))); //Configura en modo AF el PA3 y el PA2
+
+//-----------------CONFIGURACION PERIFÉRICOS MODO TIC--------------------------//
+	GPIOB->MODER &= ~(11 << (3*2)); // reset de PB3 por este pin se realizará la medición de TIEMPO enviada por el sensor
+	GPIOB->MODER |=(10<<(3*2));//Configuramos como AF el pin PB3
+	GPIOB->AFR[0] &=~(1111<<(3*4));//Reset de las posiciones
+	GPIOB->AFR[0] |=(1<<(3*4));//Configuración de AF01 para el PB3 relacionado con CH2 del TIM2
+//------------------CONFIGURACION USART-----------------------------//
 	GPIOA->AFR[0]|=(7 << (2*4)); // AFR[0] PA2 --> AF7 (TX USART2)
 	GPIOA->AFR[0]|=(7 << (3*4)); // AFR[0] PA3 --> AF7 (RX USART2)
 
@@ -179,20 +187,23 @@ void TIM2_IRQHandler(void){
 		TON=0;
 		TIM2->SR &= ~(1<<0); // Limpio los flags del contador
 	}
-	if ((TIM2->SR & 0x02))
-	{ // Se produce una captura TIC
+	if ((TIM2->SR & (1<<2)))
+	{ 	// Se produce una captura TIC
 		PUL=4; // Actualizo para que el programa principal
-				IC_CONTEO = TIM2->CCR1; // Se tomo el número de Tics
-				TIM2->SR &= ~(1<<1); // Limpio los flags del contador
+				IC_CONTEO = TIM2->CCR2; // Se tomo el número de Tics
+				TIM2->SR &= ~(1<<2); // Limpio los flags del contador
 				//El Timer no se apaga porque se pueden capturar varias veces
 				//Deboucing
-		if (estado==1) {
-			TIM3->CR1 |= (1<<0); //arrancamos timer
-			estado = 0;
-		}else {
-			__NOP ();
-		}
-		EXTI->PR |= (1 << 13); // Clear interrupt
+				if (estado==1)
+				{
+					TIM3->CR1 |= (1<<0); //arrancamos timer
+					estado = 0;
+                    TON=0; //Obligo a pasar por el PRIMER if de la interrupción del TIM3
+                    //de este modo no apago el timer aunque pulse el botón y se active la interrupción del TIM2
+				}else {
+					__NOP();
+				}
+				EXTI->PR |= (1 << 13); // Clear interrupt
 	}
 
 }
@@ -281,7 +292,7 @@ int main(void)
 
 	  if (PUL==1)
 	  {
-	  PUL=5; // Si pulso lo pongo a 0 para la próxima interrupción
+	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
 	  sprintf(msg, "\r\nTimer encendido por usuario\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
 	  }
@@ -293,16 +304,16 @@ int main(void)
 	  if (PUL==3)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
-	  sprintf(msg, "\r\nTimer autoapagado (>10s)\r\n");
+	 // sprintf(msg, "\r\nTimer autoapagado (>10s)\r\n");
 	  	 // puts(msg);
-	  //char msg[]= "\r\nTimer autoapagado (>10s)\r\n";
+	  char msg[]= "\r\nTimer autoapagado (>10s)\r\n";
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);}
 	  if (PUL==4)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
 	  Tiempo = (float) IC_CONTEO/1000000; // En ms
 	  sprintf(msg, "Captura en: %f.2 segundos\r\n", Tiempo);
-	  puts(msg);
+
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
 	  }
 
