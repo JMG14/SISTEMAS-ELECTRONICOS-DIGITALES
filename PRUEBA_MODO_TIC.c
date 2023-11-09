@@ -190,7 +190,7 @@ void TIM2_IRQHandler(void){
 	if ((TIM2->SR & (1<<2)))
 	{ 	// Se produce una captura TIC
 		PUL=4; // Actualizo para que el programa principal
-				IC_CONTEO = TIM2->CCR2; // Se tomo el número de Tics
+				IC_CONTEO = TIM2->CCR2; // Se tomo el número de Tics <CANAL 2>
 				TIM2->SR &= ~(1<<2); // Limpio los flags del contador
 				//El Timer no se apaga porque se pueden capturar varias veces
 				//Deboucing
