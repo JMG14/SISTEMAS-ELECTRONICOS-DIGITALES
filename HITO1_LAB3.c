@@ -104,14 +104,14 @@ void trigger_TIM()
 {
 //---------CONFIGURACIÓN DE <BT> DEL TIMER 3---------------------------//
 
-	trig_TIM->ARR = 19; //el período de mi señal va a ser 20us
+	trig_TIM->ARR = 35999; //el período de mi señal va a ser 46ms  (10 us + 10000us + 36000us)
 	trig_TIM->PSC =83; //tengo una resolución Tu=1 microsegundo
 	trig_TIM->CNT =0; //la cuenta empieza en 0
 
 //------------------CONFIGURACIÓN INTERNA DEL TIMER 3--------------------------------------//
 
 	trig_TIM->CR1 &=~(1<<0)|(1<<1)|(1<<2)|(1<<3)|(1<<4)|(11<<5)|(1<<7)|(11<<8); //RESETEAMOS LAS CONFIGURACIONES
-	trig_TIM->CR1 |=(1<<2)|(1<<7)|(1<<3);//activamos OPM "el contador se desactiva una vez que llega el evento UE"
+	trig_TIM->CR1 |=(1<<2)|(1<<7);//|(1<<3);//activamos OPM "el contador se desactiva una vez que llega el evento UE"
 	trig_TIM->SMCR =0; //DESACTIVADO
 	trig_TIM->CR2=0; // DESACTIVADO
 
@@ -121,6 +121,7 @@ void trigger_TIM()
 	trig_TIM->CCMR1 &=~(11<<0); //configuración <CANAL 1> como OUTPUT (TOC) vamos a sacar la señal PWM
 	trig_TIM->CCMR1 |=(6<<4); //Configuramos como PWM con el primer semiciclo a "1"
 	trig_TIM->CCER=0; //RESET de TODAS las posiciones
+	//trig_TIM->CCER |=(1<<1); //activo a low
 	trig_TIM->CCER |=(1<<0); //ACTIVAR el modo comparación del <CANAL 1>
 	trig_TIM->CCR1 = 9; //Ponemos el CCR1 de manera que nos genere un DC=50% y esté encendido 0.5s
 
@@ -131,17 +132,17 @@ void trigger_TIM()
 	trig_TIM->SR =0; //limpiar el flag
 	trig_TIM->DIER &=~(1<<0);//RESET
 	trig_TIM->DIER |=(1<<0);// Activar evento UPDATE
-	trig_TIM->CR1 |=(1<<0); //Habilitar el TIMER
+
 
 }
 void TIMER_MED_TIC()
 {
  //---------CONFIGURACIÓN DE <BT> DEL TIMER 2---------------------------//
 
-	med_TIM->ARR = 359; //el período de mi señal va a ser 36ms
+	med_TIM->ARR = 35999; //el período de mi señal va a ser 65ms
 /*Esto lo hacemos porque si el objeto está demasiado cerca o demasiado lejos el ancho de pulso que nos entrega el sensor
  * es de unos 36ms indicando que la medida está FUERA DE RANGO
- */	med_TIM->PSC =8399; //tengo una resolución Tu=0.1ms  (100us)
+ */	med_TIM->PSC =83; //tengo una resolución Tu=0.001ms  (1us)
 	med_TIM->CNT =0; //la cuenta empieza en 0
 
 //------------------CONFIGURACIÓN INTERNA DEL TIMER 2--------------------------------------//
@@ -156,7 +157,7 @@ void TIMER_MED_TIC()
 	med_TIM->CCMR1 |=(01<<8); //configuración <CANAL 2> como INPUT (TIC) vamos a MEDIR señal tiempo de "ECHO"
 	med_TIM->CCER=0; //RESET de TODAS las posiciones
 	med_TIM->CCER |=(1<<4); //ACTIVAR el modo CAPTURA (TIC) del <CANAL 2>
-	med_TIM->CCER |=(11<<5); //Activo por flanco de SUBIDA y flanco de BAJADA (detectar el rango de tiempo)
+    med_TIM->CCER |=(01<<5); //Activo por flanco de SUBIDA y flanco de BAJADA (detectar el rango de tiempo)
 	//No queremos utilizar ningún FILTRO ni tampoco el modo PSC que emplea el propio registro CCER
     //NOTA--> EN VEZ DE PONER 2 LINEAS de código si pones <med_TIM->CCER |=(7<<4);> también funcionaría
 //----------------ACTIVACIÓN FINAL DEL TIMER-------------------------//
@@ -166,7 +167,7 @@ void TIMER_MED_TIC()
 	//ninguna señal antes de tiempo
 	med_TIM->SR =0; //limpiar el flag
 	med_TIM->DIER =0;//RESET
-	med_TIM->DIER |=(1<<0)|(1<<2);// Se genera una interrupción al ocurrir una CAPTURA o un UPDATE <CANAL 2>
+	med_TIM->DIER |=((1<<0)|(1<<2));// Se genera una interrupción al ocurrir una CAPTURA o un UPDATE <CANAL 2>
 
 	NVIC_EnableIRQ(TIM2_IRQn); //habilitamos interrupción del TIMER2
 
@@ -177,7 +178,7 @@ void clk_cnfig()
 	__HAL_RCC_GPIOC_CLK_ENABLE(); //reloj puerto C
 	__HAL_RCC_GPIOB_CLK_ENABLE(); //Habilitamos reloj puerto B
 	RCC->APB1ENR |=(1<<3);// reloj TIM5
-	RCC->APB1ENR |=(1<<1)|(1<<0);// reloj TIM3 y TIM2
+	RCC->APB1ENR |=((1<<1)|(1<<0));// reloj TIM3 y TIM2
 }
 void EXTII_CNFIG()
 {
@@ -198,9 +199,9 @@ GPIOC->MODER &= ~(11 << (13*2)); //entrada PA13 INPUT
 //----------------CONFIGURACIÓN PIN DE MEDICIÓN TIEMPO MODO TIC-------------------//
 
 GPIOB->MODER &= ~(11 << (3*2)); // reset de PB3 por este pin se realizará la medición de TIEMPO enviada por el sensor
-GPIOB->MODER |=(10<<(3*2));//Configuramos como AF el pin PB3
-GPIOB->AFR[0] &=~(1111<<(3*4));//Reset de las posiciones
-GPIOB->AFR[0] |=(1<<(3*4));//Configuración de AF01 para el PB3 relacionado con CH2 del TIM2
+	GPIOB->MODER |=(10<<(3*2));//Configuramos como AF el pin PB3
+	GPIOB->AFR[0] &=~(1111<<(3*4));//Reset de las posiciones
+	GPIOB->AFR[0] |=(1<<(3*4));//Configuración de AF01 para el PB3 relacionado con CH2 del TIM2
 
 //-----------CONFIGURACIÓN SEÑAL TRIGGER MODO TOC----------------------------//
 
@@ -219,7 +220,8 @@ GPIOA->OTYPER &= ~(1 << 5); //Push-Pull PA5
 void EXTI15_10_IRQHandler(void) {
   if (EXTI->PR & (1<<13)&&(aux==0))
   {
-	   deb_TIM->CR1 |=(1<<0); //ACTIVAMOS el timmer5 que es el deboucing
+	   deb_TIM->CR1 |=(1<<0); //ACTIVAMOS el TIMER 5 que es el deboucing
+
 	   aux=1;
 
 	 // GPIOA->BSRR |= (1<<5); //PROBAMOS SI SE EJECUTA EXTI
@@ -237,20 +239,16 @@ void TIM5_IRQHandler()
 {
 	deb_TIM->CR1 &=~ (1<<0); //apagamos el TIMER, no queremos que siga contando ya llegó a 250ms así que lo apagamos
 
-	if(TON==0)
+	if(deb_TIM->SR & 1)
 	{
 		med_TIM->CR1 |=(1<<0); //Activamos el TIMER de medición TIC al pulsar botón y esperar 250ms
+		trig_TIM->CR1 |=(1<<0); //envia la PWM para activar el sensor de SONIDO
+
 		GPIOA->BSRR |=(1<<5);//Enciende el LED del PA5 para asegurarnos que el TIMER de medición está actuando
-		TON=1; //variable de control
+
 		PUL=1; //nos indicará que hemos activado correctamente el timmer de medición
 	}
-	else
-	{
-		med_TIM->CR1 &=~(1<<0); //Apagamos el timmer por voluntad propia
-		GPIOA->BSRR |=((1<<5)<<16); //Apaga el LED del PA5
-		TON=0; //variable de control nos indica que ha pasado por aquí el programa
-		PUL=2; //nos indicará que hemos apagado el TIMER de medición
-	}
+
 	deb_TIM->SR &=~(1<<0); //limpiamos flag del evento UPDATE
 	aux=0; //para que cuando se ejecute la EXTI vuelva a pasar por el TIMMER
 }
@@ -260,35 +258,41 @@ void TIM5_IRQHandler()
 void TIM2_IRQHandler()
 {
 
-	if((TIM2->SR & 1))   //Se ha desbordado. Se acabó el tiempo llegó a 36ms
+	if((med_TIM->SR & 1))   //Se ha desbordado. Se acabó el tiempo llegó a 36ms
 	{
 	PUL=3;
-	TIM2->CR1 &= ~(1<<0); //Apaga timer. No se ha producido captura FUERA DE RANGO
+	//med_TIM->CR1 &= ~(1<<0); //Apaga timer. No se ha producido captura FUERA DE RANGO
 	GPIOA->BSRR |= (1<<5)<<16; //Apaga LED
 	TON=0;//variable de control
-	TIM2->SR &= ~(1<<0); // Limpio los flags del contador
+	med_TIM->SR &= ~(1<<0); // Limpio los flags del contador
 	}
-	else if ((TIM2->SR & (1<2)))
+	if ((med_TIM->SR & (1<<2)))
 		{ // Se produce una captura TIC en el <CANAL 2>
-
-			if (i==2){ //cuando se hallan realizado 2 capturas me imprimirá por pantalla el resultado
+		PUL=4;
+		numTicks2=med_TIM->CCR2;
+		med_TIM->SR &= ~(1<<2);
+			/*if (i==2)
+			{ //cuando se hallan realizado 2 capturas me imprimirá por pantalla el resultado
 
 				PUL=4;// Actualizo para que el programa principal imprima el calculo por pantalla
 				i=0;
 			}
 			if(captura==1)
 			{
-				numTicks1=TIM2->CCR2; 	// Se tomo el número de Tics en el flanco de subida 1r CAPTURA <CANAL 2>
+				numTicks1=med_TIM->CCR2; 	// Se tomo el número de Tics en el flanco de subida 1r CAPTURA <CANAL 2>
 				captura=2; //como ha realizado la primera captura, ahora vamos a realizar la segunda captura
-				TIM2->SR &= ~(1<<2);	 // Limpio los flags del contador <CANAL 2>
+				med_TIM->SR &= ~(1<<2);	 // Limpio los flags del contador <CANAL 2>
+				i++;
 			} else if(captura==2)
 			{
-				numTicks2=TIM2->CCR2; 	// Se tomo el número de Tics flanco de caída 2nd CAPTURA <CANAL 2>
+				numTicks2=med_TIM->CCR2; 	// Se tomo el número de Tics flanco de caída 2nd CAPTURA <CANAL 2>
 				captura=1; //se realiza la segunda captura, reiniciamos el contador para que vuelva a hacer 1r captura
-			}
-			i++;
-		}
+				med_TIM->SR &= ~(1<<2);
+				i++;
+			}*/
 
+		}
+	//med_TIM->SR &= ~(1<<2);
 }
 /* USER CODE END PFP */
 
@@ -327,10 +331,10 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	setvbuf (stdin, NULL, _IONBF, 0);
-	const float Vel_Sonido=0.0343;
+
 	float Tiempo =0;
 	//uint32_t conteo=0; //aquí se almacena el resultado del conteo
-	float distancia;
+	float distancia=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -355,10 +359,10 @@ int main(void)
   MX_USART2_UART_Init();
   clk_cnfig();
   GPIO_CONF();
- // EXTII_CNFIG();
-  //deboucing_TIMMER();
-  trigger_TIM();//envia la PWM para activar el sensor de SONIDO
-  //TIMER_MED_TIC();
+  EXTII_CNFIG();
+  deboucing_TIMMER();
+  trigger_TIM();
+  TIMER_MED_TIC();
 
 HAL_UART_Transmit(&huart2,(char *) msg, strlen(msg),100);
 
@@ -379,26 +383,31 @@ HAL_UART_Transmit(&huart2,(char *) msg1, strlen(msg1),100);
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
 	  sprintf(msg_1, "Timer encendido por usuario\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg_1, strlen(msg_1), HAL_MAX_DELAY);
+	  HAL_Delay(1000);
 	  }
 	  if (PUL==2)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
 	  sprintf(msg_1, "Timer apagado por usuario\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg_1, strlen(msg_1), HAL_MAX_DELAY);
+	 HAL_Delay(1000);
 	  }
 	  if (PUL==3)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
 	  sprintf(msg_1, "Medida fuera de rango (>36ms)\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg_1, strlen(msg_1), HAL_MAX_DELAY);
+	 HAL_Delay(1000);
 	  }
 	  if (PUL==4)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
-	  Tiempo =  (numTicks2-numTicks1)*1000/10; // En us
-	  distancia= Tiempo * Vel_Sonido/2;
-	  sprintf(msg_1, "Distancia en (cm)= %.f\r\n", distancia);
+	  Tiempo =  (numTicks2-numTicks1); // En us PARA ANALIZAR QUÉ ESTÁ OCURRIENDO la distancia me la da la VARIABLE de ABAJO
+	  //Tiempo =  numTicks2*0.034/2; //en cm/us
+	  distancia= Tiempo; //Distancia en cm
+	  sprintf(msg_1, "Distancia en (cm)= %.2f\r\n",   distancia);
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg_1, strlen(msg_1), HAL_MAX_DELAY);
+	 HAL_Delay(1000);
 
 	  }
 
