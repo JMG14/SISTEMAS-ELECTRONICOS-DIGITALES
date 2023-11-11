@@ -51,8 +51,7 @@ uint8_t PUL=0;// variable para imprimir por pantalla lo que ocurre
 uint8_t aux=0; //esta variable nos avisará si entra en la interrupción BOTÓN PC13
 uint8_t TON=0; //esta variable avisará si entra en la interrupción del TIMER5 (deboucing)
 char msg[]="\r\n Ejemplo con sensor HC SR-04 sin IC\n\r";
-uint32_t numTicks1=0; //almacena valor de la primera captura
-uint32_t numTicks2=0; // almacena valor de la segunda captura
+uint32_t numTicks=0; //almacena valor de la primera captura
 uint8_t i=0; //controlar el impreso por pantalla del resultado
 uint8_t captura=1; //para llevar un control de la captura que se está realizando
 char msg_1[50]="";//variable que nos muestra los avisos de las diferentes fases que va pasando el programa
@@ -269,30 +268,10 @@ void TIM2_IRQHandler()
 	if ((med_TIM->SR & (1<<2)))
 		{ // Se produce una captura TIC en el <CANAL 2>
 		PUL=4;
-		numTicks2=med_TIM->CCR2;
+		numTicks=med_TIM->CCR2;
 		med_TIM->SR &= ~(1<<2);
-			/*if (i==2)
-			{ //cuando se hallan realizado 2 capturas me imprimirá por pantalla el resultado
-
-				PUL=4;// Actualizo para que el programa principal imprima el calculo por pantalla
-				i=0;
-			}
-			if(captura==1)
-			{
-				numTicks1=med_TIM->CCR2; 	// Se tomo el número de Tics en el flanco de subida 1r CAPTURA <CANAL 2>
-				captura=2; //como ha realizado la primera captura, ahora vamos a realizar la segunda captura
-				med_TIM->SR &= ~(1<<2);	 // Limpio los flags del contador <CANAL 2>
-				i++;
-			} else if(captura==2)
-			{
-				numTicks2=med_TIM->CCR2; 	// Se tomo el número de Tics flanco de caída 2nd CAPTURA <CANAL 2>
-				captura=1; //se realiza la segunda captura, reiniciamos el contador para que vuelva a hacer 1r captura
-				med_TIM->SR &= ~(1<<2);
-				i++;
-			}*/
-
 		}
-	//med_TIM->SR &= ~(1<<2);
+
 }
 /* USER CODE END PFP */
 
@@ -402,33 +381,15 @@ HAL_UART_Transmit(&huart2,(char *) msg1, strlen(msg1),100);
 	  if (PUL==4)
 	  {
 	  PUL=0; // Si pulso lo pongo a 0 para la próxima interrupción
-	  Tiempo =  (numTicks2-numTicks1); // En us PARA ANALIZAR QUÉ ESTÁ OCURRIENDO la distancia me la da la VARIABLE de ABAJO
+	  Tiempo =  numTicks-480; // En us PARA ANALIZAR QUÉ ESTÁ OCURRIENDO la distancia me la da la VARIABLE de ABAJO
 	  //Tiempo =  numTicks2*0.034/2; //en cm/us
-	  distancia= Tiempo; //Distancia en cm
+	  distancia= Tiempo*0.034/2; //Distancia en cm
 	  sprintf(msg_1, "Distancia en (cm)= %.2f\r\n",   distancia);
 	  HAL_UART_Transmit(&huart2, (uint8_t*) msg_1, strlen(msg_1), HAL_MAX_DELAY);
 	 HAL_Delay(1000);
 
 	  }
 
-/*
-      while((GPIOA->IDR & (1 << 9)) == (uint32_t) 0); // 2. Wait for ECHO pin rising edge in PA9
-       numTicks = 0; // 3. Start measuring ECHO Pulse width in us
-
-      while((GPIOA->IDR & (1<<9))==(uint32_t)(1<<9))
-      {
-	     numTicks++;
-	     //usDelay(2);
-
-      }
-
-    distancia = (numTicks + 0.0f) *1.2* Vel_Sonido/2;
-
-    sprintf(msg_res,"Distance (cm)= %.f\r\n", distancia);
-    HAL_UART_Transmit(&huart2, (uint8_t *) msg_res, strlen(msg_res), 100);
-    HAL_Delay(1000);
-
-*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
