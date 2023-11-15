@@ -436,7 +436,7 @@ HAL_UART_Transmit(&huart2,(char *) msg1, strlen(msg1),100);
 
 	  }
 	  //-------------------------CONFIGURACIÓN MOVIMIENTO DEL SERVO-----------------------//
-     while(c<8){
+    // while(c<8){
 	  c++;
 	   HAL_Delay(1000);
 	       switch (c)
@@ -471,7 +471,7 @@ HAL_UART_Transmit(&huart2,(char *) msg1, strlen(msg1),100);
 	      	      	  //c=0;
 	      	      	  break;
 	      	      	  }
-     }
+   //  }
 
 
 
