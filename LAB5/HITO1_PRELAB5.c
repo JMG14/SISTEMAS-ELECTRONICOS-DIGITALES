@@ -65,13 +65,9 @@ static void MX_TIM3_Init(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-   //if(EXTI->PR & (1<<13))
-   //{
+   
 	   TIM10->CR1 |=(1<<0);//Activamos el TIMER antirebotes
-	   //HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
-   //}
-	//EXTI->PR |=(1<<13); //RESET flag //ATENCIÓN!! EL MANEJADOR DE FUNCIÓN EXTI DE HAL SE puede programar directamente, no hace falta preguntar por el PIN
-	   //TAMPOCO HACE FALTA HACER RESET DEL FLAG LO HACE TODO LA FUNCIÓN DE HAL
+
 }
 
 void TIM1_UP_TIM10_IRQHandler() //TIMER DE CONTROL DE IMPRIMIR POR PANTALLA
@@ -83,10 +79,7 @@ void TIM1_UP_TIM10_IRQHandler() //TIMER DE CONTROL DE IMPRIMIR POR PANTALLA
 	}else if (TIM10->SR & (1<<0))
 	{
 		TIM10->CR1 &=~(1<<0); //Apagamos TIMER
-		//GPIOA->BSRR |=(1<<5);// ENCENDEMOS LED
 		TIM1->CR1 |=(1<<0); //Activamos el TIMER que imprime por pantalla el valor promedio
-
-
 	}
 	TIM1->SR=0; //RESET interrupción
 	TIM10->SR=0;
