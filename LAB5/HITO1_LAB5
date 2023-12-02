@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <demora_TIM.h>
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -24,7 +25,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <TIM1.h>
-#include <deboucing_TIM.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,9 +51,9 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t modo=0;
-char seleccion;
+
 char Mensaje_TX[]="\r\n*********************************************************************************\r\n**********"
-"*HOLA! SOY EL POLLO DEL ARROZ CON POLLO***********\r\n*****"
+"*HOLA! SOY EL POLLO DEL ARROZ CON POLLO (*)> ***********\r\n*****"
 "*******************************************************************************\r\n"
 "Teclee '1' para activar 'modo1'\r\n"
 "Teclee '2' para activar 'modo2'\r\n";
@@ -64,9 +64,11 @@ char modo1[]="Te encuentras en el modo 1\r\n"
 "Teclee '0' si desea regresar al menu\r\n";
 char modo2[]="Te encuentras en el modo 2\r\n"
 		"Teclee '0' si desea regresar al menu\r\n";
-//char comparacion[5]="";
+
 char *confirma="\r\nOK\r\n";
 char Rx_data[1];
+uint8_t seleccion=0;;
+uint8_t m1=0; //variable control switch
 uint8_t estado=0;
 uint8_t p=0;
 uint8_t i=0; //índice del vector (array)
@@ -87,22 +89,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 	extern char Rx_data[1];
 	extern uint8_t p;
-	//strcat(comparacion,Rx_data);
+// ESTE IF ES MUY IMPORTANTE YA QUE HAY VARIOS PUERTOS UART Y EN ESTE CASO ESTAMOS UTILIZANDO LA UART2 (funciona igual que una EXTI15_10 la cual has de seleccionar la que estas utilizando)
 	if(huart->Instance == USART2) //ESTE condicional es para seleccionar la UART2 y que entre en el condicional (como cuando tienes varias EXTI y debes elegir una)
 	{
-		if( (strcmp(Rx_data,"\n"))||(strcmp(Rx_data,"\r")))// DEVUELVE un 0 si se cumple la comparación
+		/*if( (strcmp(Rx_data,"\n"))||(strcmp(Rx_data,"\r")))// DEVUELVE un 0 si se cumple la comparación
 				{
 				//seleccion=Rx_data;
 					p=1; //fin porque el terminal termina con \n o \l
-				}
+				}*/
 		if( (!strcmp(Rx_data,"\n"))||(!strcmp(Rx_data,"\r")))// DEVUELVE un 0 si se cumple la comparación
 		{
 			p=1; //fin porque el terminal termina con \n o \l
 		}
 		if(!strcmp(Rx_data,"0" ))
 		{
+			//GPIOA->ODR ^=(1<<5);
 			HAL_UART_Transmit_IT(&huart2, (uint8_t *)Mensaje_TX,sizeof(Mensaje_TX));
 			modo=0;
+			estado=0;
 			p=0; //caracter permitido
 			//memset(comparacion, '\0', sizeof(comparacion));
 		}
@@ -110,8 +114,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 			HAL_UART_Transmit_IT(&huart2, (uint8_t *)modo1,sizeof(modo1));
 			modo=1;
-			//estado=1;
-			//seleccion="C";
+			estado=1;
 			p=0; //caracter permitido
 			//memset(comparacion, '\0', sizeof(comparacion));
 		}
@@ -119,10 +122,32 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 			HAL_UART_Transmit_IT(&huart2, (uint8_t *)modo2,sizeof(modo2));
 			modo=1;
-			//estado=2;
+			estado=2;
 			p=0; //caracter permitido
 		//	memset(comparacion, '\0', sizeof(comparacion));
 		}
+		if(!strcmp(Rx_data,"A" ))
+				{
+
+
+					seleccion=1;
+					p=0; //caracter permitido
+					//memset(comparacion, '\0', sizeof(comparacion));
+				}
+		if(!strcmp(Rx_data,"B" ))
+					{
+
+						seleccion=2;
+						p=0; //caracter permitido
+						//memset(comparacion, '\0', sizeof(comparacion));
+					}
+		if(!strcmp(Rx_data,"C" ))
+					{
+			         	 seleccion=3;
+
+						 p=0; //caracter permitido
+								//memset(comparacion, '\0', sizeof(comparacion));
+					}
 
 
 		HAL_UART_Receive_IT(&huart2, (uint8_t *) Rx_data, 1);
@@ -145,20 +170,20 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 }*/
 
-/*void TIM1_UP_TIM10_IRQHandler() //TIMER DE CONTROL DE IMPRIMIR POR PANTALLA
+void TIM1_UP_TIM10_IRQHandler() //TIMER DE CONTROL DE IMPRIMIR POR PANTALLA
 {
-	if(TIM1->SR & (1<<0)) //Puede ser la IRQ del TIM10 también, nos ASEGURAMOS que es el TIM1 (aunque esté deshabilitado el TIM10)
+	/*if(TIM1->SR & (1<<0)) //Puede ser la IRQ del TIM10 también, nos ASEGURAMOS que es el TIM1 (aunque esté deshabilitado el TIM10)
 	{
 		//HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5); //Toggle del LED USUARIO
 		stream=1; //imprime por pantalla el promedio de las medidas
-	}else if (TIM10->SR & (1<<0))
+	}else */if (TIM10->SR & (1<<0))
 	{
 		TIM10->CR1 &=~(1<<0); //Apagamos TIMER
-		TIM1->CR1 |=(1<<0); //Activamos el TIMER que imprime por pantalla el valor promedio
+		//TIM1->CR1 |=(1<<0); //Activamos el TIMER que imprime por pantalla el valor promedio
 		//HAL_ADC_Start_IT(&hadc1);
 		 // HAL_TIM_Base_Start_IT(&htim3);
 	}
-	TIM1->SR=0; //RESET interrupción
+	//TIM1->SR=0; //RESET interrupción
 	TIM10->SR=0;
 }
 void clk_config()
@@ -167,7 +192,7 @@ void clk_config()
 	__HAL_RCC_TIM10_CLK_ENABLE();
 }
 
-
+/*
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) //Función que se ACTIVA cuando se ha realizado la conversión de TODOS los canales
 {
 		GPIOA->BSRR |=(1<<5);// ENCENDEMOS LED INDICANDO CONVERSIÓN
@@ -194,7 +219,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) //Función que se ACTIVA 
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-char warning[]="No se reconoce el caracter";
+
+//char warning[]="No se reconoce el caracter\r\n";
+char msg1[]="Has seleccionado MODO STOP\r\n";
+char msg2[]="Has seleccionado MODO PWM1\r\n";
+char msg3[]="Has seleccionado MODO PWM2\r\n";
 /*uint8_t res_string[30]="";
 float suma=0;
 float promedio=0;
@@ -208,6 +237,7 @@ uint8_t j=0;*/
 
   /* USER CODE BEGIN Init */
   //clk_config();
+ // demora_TIM();
  // stream_TIM();
  // deboucing_TIM();
  // TIM1->CR1 |=(1<<0);
@@ -236,18 +266,39 @@ uint8_t j=0;*/
   {
 	  if(estado==1)//Este se queda esperando por el MODO1
 	  {
+
           switch(seleccion)
           {
-          case 'A': break;
-          case 'B': break;
-          case 'C': break;
-          default:  HAL_UART_Transmit(&huart2, (uint8_t *)warning,strlen(warning),1000);
-        		  break;
+          	  case 1:
+
+          		HAL_UART_Transmit(&huart2,(uint8_t *)msg2,strlen(msg2),1000);
+          		seleccion=0;
+
+          	  	  	  	  break;
+          	  case 2:
+
+          		  		HAL_UART_Transmit(&huart2,(uint8_t *)msg3,strlen(msg3),1000);
+
+          		  	seleccion=0;
+        	  	  break;
+
+          	  case 3:
+
+
+        	  HAL_UART_Transmit(&huart2,(uint8_t *)msg1,strlen(msg1),1000);
+
+
+        	  seleccion=0;
+
+        	  break;
           }
+
 	  }
 	  if(estado==2)//Se queda esperando por el MODO2
 	  {
-
+		  demora(); //ESTE CÓDIGO ACTIVA EL TIMER (LO ENCIENDE)
+        // estado=0; //si no reiniciamos la variable, el microcontrolador se queda continuamente en el bloque if de manera que no le da tiempoo a
+         //no le da tiempo a atender la interrupción que recibe por puerto serie UART
 	  }
 	  if(p==1)
 	  	 {
